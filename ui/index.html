@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cerberus — Security Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: #1a2035;
+            --bg-card-hover: #1f2847;
+            --border: #2a3555;
+            --text-primary: #e8eaf0;
+            --text-secondary: #8892a8;
+            --text-muted: #5a6580;
+            --accent: #6c5ce7;
+            --accent-glow: rgba(108, 92, 231, 0.3);
+            --critical: #ef4444;
+            --high: #f97316;
+            --medium: #eab308;
+            --low: #3b82f6;
+            --success: #22c55e;
+            --info: #06b6d4;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 260px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            padding: 20px 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo {
+            padding: 0 24px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #a78bfa);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .nav { padding: 16px 12px; flex: 1; }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+        .nav-item.active { background: var(--accent); color: white; }
+        .nav-icon { width: 20px; text-align: center; font-size: 16px; }
+
+        .client-selector {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .client-selector select {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        .client-selector label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        /* Main content */
+        .main { margin-left: 260px; padding: 24px 32px; }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+        }
+
+        .topbar h1 { font-size: 24px; font-weight: 600; }
+        .topbar-right { display: flex; gap: 12px; align-items: center; }
+
+        .btn {
+            padding: 8px 18px;
+            border-radius: 8px;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: #5a4bd6; box-shadow: 0 0 20px var(--accent-glow); }
+        .btn-secondary { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--bg-card-hover); }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .auto-refresh { color: var(--text-muted); font-size: 12px; }
+
+        /* Grid Layout */
+        .grid { display: grid; gap: 20px; }
+        .grid-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-4 { grid-template-columns: repeat(4, 1fr); }
+        .grid-hero { grid-template-columns: 320px 1fr; }
+        .grid-bottom { grid-template-columns: 1fr 1fr; }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 22px;
+            transition: all 0.2s;
+        }
+
+        .card:hover { border-color: #3a4a70; }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .card-title { font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+
+        /* Security Score Gauge */
+        .score-hero {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px 22px;
+        }
+
+        .gauge-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+        }
+
+        .gauge-svg { transform: rotate(-90deg); }
+
+        .gauge-bg {
+            fill: none;
+            stroke: var(--border);
+            stroke-width: 12;
+        }
+
+        .gauge-fill {
+            fill: none;
+            stroke-width: 12;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .gauge-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .gauge-score { font-size: 48px; font-weight: 800; line-height: 1; }
+        .gauge-grade { font-size: 20px; font-weight: 700; margin-top: 4px; }
+        .gauge-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+        /* Severity Cards */
+        .severity-card {
+            text-align: center;
+            padding: 18px 14px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .severity-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .severity-card.critical::before { background: var(--critical); }
+        .severity-card.high::before { background: var(--high); }
+        .severity-card.medium::before { background: var(--medium); }
+        .severity-card.low::before { background: var(--low); }
+
+        .severity-count { font-size: 36px; font-weight: 800; line-height: 1; }
+        .severity-label { font-size: 12px; color: var(--text-muted); margin-top: 6px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .critical .severity-count { color: var(--critical); }
+        .high .severity-count { color: var(--high); }
+        .medium .severity-count { color: var(--medium); }
+        .low .severity-count { color: var(--low); }
+
+        /* Health Grid */
+        .health-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+        .health-item {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .health-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .health-dot.green { background: var(--success); box-shadow: 0 0 8px rgba(34, 197, 94, 0.4); }
+        .health-dot.yellow { background: var(--medium); box-shadow: 0 0 8px rgba(234, 179, 8, 0.4); }
+        .health-dot.red { background: var(--critical); box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+
+        .health-info { flex: 1; }
+        .health-name { font-size: 13px; font-weight: 600; }
+        .health-detail { font-size: 11px; color: var(--text-muted); }
+
+        /* Compliance Radar */
+        .chart-container { position: relative; height: 280px; }
+
+        /* Timeline */
+        .timeline { max-height: 400px; overflow-y: auto; padding-right: 8px; }
+        .timeline::-webkit-scrollbar { width: 4px; }
+        .timeline::-webkit-scrollbar-track { background: transparent; }
+        .timeline::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .timeline-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(42, 53, 85, 0.5);
+        }
+
+        .timeline-item:last-child { border-bottom: none; }
+
+        .timeline-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-top: 6px;
+            flex-shrink: 0;
+        }
+
+        .timeline-dot.critical { background: var(--critical); }
+        .timeline-dot.high { background: var(--high); }
+        .timeline-dot.medium { background: var(--medium); }
+        .timeline-dot.low { background: var(--low); }
+
+        .timeline-content { flex: 1; }
+        .timeline-title { font-size: 13px; font-weight: 500; }
+        .timeline-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+        .timeline-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase; }
+
+        .timeline-badge.critical { background: rgba(239, 68, 68, 0.15); color: var(--critical); }
+        .timeline-badge.high { background: rgba(249, 115, 22, 0.15); color: var(--high); }
+        .timeline-badge.medium { background: rgba(234, 179, 8, 0.15); color: var(--medium); }
+        .timeline-badge.low { background: rgba(59, 130, 246, 0.15); color: var(--low); }
+
+        /* Breach Alerts */
+        .breach-alert {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .breach-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+        .breach-title { font-size: 13px; font-weight: 600; }
+        .breach-desc { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+        .breach-time { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+        /* Trend Chart */
+        .trend-chart { position: relative; height: 220px; }
+
+        /* Quick Actions */
+        .quick-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+        .action-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover { background: var(--bg-card-hover); border-color: var(--accent); }
+        .action-icon { font-size: 24px; margin-bottom: 6px; }
+        .action-label { font-size: 12px; font-weight: 600; }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            width: 480px;
+            max-width: 90vw;
+        }
+
+        .modal h2 { font-size: 18px; margin-bottom: 16px; }
+        .modal-close { float: right; cursor: pointer; font-size: 18px; color: var(--text-muted); background: none; border: none; }
+
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .grid-hero { grid-template-columns: 1fr; }
+            .grid-4 { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; padding: 16px; }
+            .grid-2, .grid-3, .grid-4, .grid-bottom { grid-template-columns: 1fr; }
+            .health-grid { grid-template-columns: 1fr; }
+            .quick-actions { grid-template-columns: 1fr; }
+        }
+
+        /* Loading animation */
+        .loading { opacity: 0.5; pointer-events: none; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .pulse { animation: pulse 2s infinite; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+    <div class="logo">
+        <div class="logo-icon">&#x1f6e1;</div>
+        <span class="logo-text">CERBERUS</span>
+    </div>
+    <nav class="nav">
+        <div class="nav-item active" data-page="dashboard">
+            <span class="nav-icon">&#x25A3;</span> Dashboard
+        </div>
+        <div class="nav-item" data-page="findings">
+            <span class="nav-icon">&#x26A0;</span> Findings
+        </div>
+        <div class="nav-item" data-page="compliance">
+            <span class="nav-icon">&#x2714;</span> Compliance
+        </div>
+        <div class="nav-item" data-page="breaches">
+            <span class="nav-icon">&#x1f513;</span> Breaches
+        </div>
+        <div class="nav-item" data-page="scans">
+            <span class="nav-icon">&#x1f50D;</span> Scans
+        </div>
+        <div class="nav-item" data-page="reports">
+            <span class="nav-icon">&#x1f4c4;</span> Reports
+        </div>
+    </nav>
+    <div class="client-selector">
+        <label>Client</label>
+        <select id="targetSelector">
+            <option value="">All Targets</option>
+        </select>
+    </div>
+</aside>
+
+<!-- Main Content -->
+<div class="main">
+    <!-- Top Bar -->
+    <div class="topbar">
+        <div>
+            <h1>Security Dashboard</h1>
+            <span class="auto-refresh" id="lastUpdate">Loading...</span>
+        </div>
+        <div class="topbar-right">
+            <button class="btn btn-secondary" onclick="refreshData()">&#x21BB; Refresh</button>
+            <button class="btn btn-primary" onclick="showModal('scanModal')">&#x25B6; Run Scan</button>
+            <button class="btn btn-secondary" onclick="showModal('targetModal')">+ Add Target</button>
+        </div>
+    </div>
+
+    <!-- Hero Row: Score + Severity Counts -->
+    <div class="grid grid-hero" style="margin-bottom: 20px;">
+        <!-- Security Score Gauge -->
+        <div class="card score-hero">
+            <div class="card-title" style="margin-bottom: 12px;">SECURITY SCORE</div>
+            <div class="gauge-container">
+                <svg class="gauge-svg" viewBox="0 0 200 200" width="200" height="200">
+                    <circle class="gauge-bg" cx="100" cy="100" r="85"/>
+                    <circle class="gauge-fill" id="gaugeCircle" cx="100" cy="100" r="85"
+                        stroke-dasharray="534" stroke-dashoffset="534"/>
+                </svg>
+                <div class="gauge-center">
+                    <div class="gauge-score" id="scoreValue">--</div>
+                    <div class="gauge-grade" id="gradeValue">-</div>
+                    <div class="gauge-label">out of 100</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Severity Cards + Health Grid -->
+        <div>
+            <div class="grid grid-4" style="margin-bottom: 20px;">
+                <div class="card severity-card critical">
+                    <div class="severity-count" id="criticalCount">0</div>
+                    <div class="severity-label">Critical</div>
+                </div>
+                <div class="card severity-card high">
+                    <div class="severity-count" id="highCount">0</div>
+                    <div class="severity-label">High</div>
+                </div>
+                <div class="card severity-card medium">
+                    <div class="severity-count" id="mediumCount">0</div>
+                    <div class="severity-label">Medium</div>
+                </div>
+                <div class="card severity-card low">
+                    <div class="severity-count" id="lowCount">0</div>
+                    <div class="severity-label">Low</div>
+                </div>
+            </div>
+
+            <!-- Infrastructure Health -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Infrastructure Health</span>
+                </div>
+                <div class="health-grid" id="healthGrid">
+                    <div class="health-item">
+                        <div class="health-dot green"></div>
+                        <div class="health-info">
+                            <div class="health-name">SSL/TLS</div>
+                            <div class="health-detail">Grade A</div>
+                        </div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-dot green"></div>
+                        <div class="health-info">
+                            <div class="health-name">HTTP Headers</div>
+                            <div class="health-detail">5/7 present</div>
+                        </div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-dot yellow"></div>
+                        <div class="health-info">
+                            <div class="health-name">Email Security</div>
+                            <div class="health-detail">SPF + DMARC</div>
+                        </div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-dot green"></div>
+                        <div class="health-info">
+                            <div class="health-name">DNS</div>
+                            <div class="health-detail">Configured</div>
+                        </div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-dot green"></div>
+                        <div class="health-info">
+                            <div class="health-name">Uptime</div>
+                            <div class="health-detail">99.9%</div>
+                        </div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-dot red"></div>
+                        <div class="health-info">
+                            <div class="health-name">Ports</div>
+                            <div class="health-detail">3 risky open</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Middle Row: Compliance Radar + Recent Findings -->
+    <div class="grid grid-bottom" style="margin-bottom: 20px;">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Compliance Radar</span>
+            </div>
+            <div class="chart-container">
+                <canvas id="complianceRadar"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Recent Findings</span>
+                <span class="status-badge" style="background: var(--bg-secondary); color: var(--text-secondary);" id="findingsTotal">0 total</span>
+            </div>
+            <div class="timeline" id="findingsTimeline">
+                <div style="text-align:center; padding: 40px; color: var(--text-muted);">Loading findings...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Row: Breach Alerts + Trend + Quick Actions -->
+    <div class="grid grid-3" style="margin-bottom: 20px;">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Breach Alerts</span>
+                <span class="status-badge" style="background: rgba(239,68,68,0.15); color: var(--critical);" id="breachCount">0</span>
+            </div>
+            <div id="breachAlerts">
+                <div style="text-align:center; padding: 40px; color: var(--text-muted);">No breaches detected</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Monthly Trend</span>
+            </div>
+            <div class="trend-chart">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Quick Actions</span>
+            </div>
+            <div class="quick-actions">
+                <div class="action-btn" onclick="triggerScan()">
+                    <div class="action-icon">&#x1f50D;</div>
+                    <div class="action-label">Run Scan</div>
+                </div>
+                <div class="action-btn" onclick="generateReport()">
+                    <div class="action-icon">&#x1f4c4;</div>
+                    <div class="action-label">Generate Report</div>
+                </div>
+                <div class="action-btn" onclick="showModal('targetModal')">
+                    <div class="action-icon">&#x2795;</div>
+                    <div class="action-label">Add Target</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scan Modal -->
+<div class="modal-overlay" id="scanModal">
+    <div class="modal">
+        <button class="modal-close" onclick="hideModal('scanModal')">&times;</button>
+        <h2>Run Security Scan</h2>
+        <div class="form-group">
+            <label>Target</label>
+            <select id="scanTarget" style="width:100%;padding:8px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;">
+            </select>
+        </div>
+        <button class="btn btn-primary" onclick="startScan()" style="width: 100%; justify-content: center; padding: 12px;">Start Scan</button>
+    </div>
+</div>
+
+<!-- Add Target Modal -->
+<div class="modal-overlay" id="targetModal">
+    <div class="modal">
+        <button class="modal-close" onclick="hideModal('targetModal')">&times;</button>
+        <h2>Add Monitoring Target</h2>
+        <div class="form-group">
+            <label>Company Name</label>
+            <input type="text" id="targetName" placeholder="Acme Corp">
+        </div>
+        <div class="form-group">
+            <label>Domain</label>
+            <input type="text" id="targetDomain" placeholder="acme.com">
+        </div>
+        <div class="form-group">
+            <label>Employee Emails (comma-separated)</label>
+            <textarea id="targetEmails" rows="3" placeholder="ceo@acme.com, admin@acme.com"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="addTarget()" style="width: 100%; justify-content: center; padding: 12px;">Add Target</button>
+    </div>
+</div>
+
+<script>
+    const API = '';
+    let complianceChart = null;
+    let trendChart = null;
+    let currentTargetId = null;
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', () => {
+        initCharts();
+        refreshData();
+        setInterval(refreshData, 60000); // Auto-refresh every 60s
+
+        // Nav items
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+            });
+        });
+
+        // Target selector
+        document.getElementById('targetSelector').addEventListener('change', (e) => {
+            currentTargetId = e.target.value || null;
+            refreshData();
+        });
+    });
+
+    // --- Data Fetching ---
+    async function refreshData() {
+        try {
+            const params = currentTargetId ? `?target_id=${currentTargetId}` : '';
+            const [dashboard, findings, breaches, targets] = await Promise.all([
+                fetch(`${API}/api/dashboard${params}`).then(r => r.json()),
+                fetch(`${API}/api/findings${params}`).then(r => r.json()),
+                fetch(`${API}/api/breaches${params}`).then(r => r.json()),
+                fetch(`${API}/api/targets`).then(r => r.json()),
+            ]);
+
+            updateDashboard(dashboard);
+            updateFindings(findings);
+            updateBreaches(breaches);
+            updateTargetSelectors(targets);
+            updateLastRefresh();
+        } catch (e) {
+            console.error('Failed to refresh data:', e);
+        }
+    }
+
+    function updateLastRefresh() {
+        const now = new Date().toLocaleTimeString();
+        document.getElementById('lastUpdate').textContent = `Last updated: ${now} · Auto-refresh: 60s`;
+    }
+
+    // --- Dashboard Update ---
+    function updateDashboard(data) {
+        const score = data.security_score || 0;
+        const grade = data.grade || 'F';
+
+        // Update gauge
+        const circumference = 2 * Math.PI * 85;
+        const offset = circumference - (score / 100) * circumference;
+        const gauge = document.getElementById('gaugeCircle');
+        gauge.style.strokeDashoffset = offset;
+        gauge.style.stroke = getGradeColor(grade);
+
+        document.getElementById('scoreValue').textContent = score;
+        document.getElementById('scoreValue').style.color = getGradeColor(grade);
+        document.getElementById('gradeValue').textContent = grade;
+        document.getElementById('gradeValue').style.color = getGradeColor(grade);
+
+        // Severity counts
+        const counts = data.severity_counts || {};
+        document.getElementById('criticalCount').textContent = counts.critical || 0;
+        document.getElementById('highCount').textContent = counts.high || 0;
+        document.getElementById('mediumCount').textContent = counts.medium || 0;
+        document.getElementById('lowCount').textContent = counts.low || 0;
+
+        // Compliance radar
+        const compliance = data.compliance || {};
+        updateComplianceRadar(compliance);
+
+        // Breach count
+        document.getElementById('breachCount').textContent = data.breach_alerts || 0;
+    }
+
+    function updateFindings(findings) {
+        const timeline = document.getElementById('findingsTimeline');
+        document.getElementById('findingsTotal').textContent = `${findings.length} total`;
+
+        if (!findings.length) {
+            timeline.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">No findings yet. Run a scan to get started.</div>';
+            return;
+        }
+
+        timeline.innerHTML = findings.slice(0, 20).map(f => `
+            <div class="timeline-item">
+                <div class="timeline-dot ${f.severity}"></div>
+                <div class="timeline-content">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span class="timeline-title">${escapeHtml(f.title)}</span>
+                        <span class="timeline-badge ${f.severity}">${f.severity}</span>
+                    </div>
+                    <div class="timeline-meta">${escapeHtml(f.category)} · ${f.created_at || ''}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function updateBreaches(breaches) {
+        const container = document.getElementById('breachAlerts');
+        if (!breaches.length) {
+            container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--success);">&#x2714; No breaches detected</div>';
+            return;
+        }
+
+        container.innerHTML = breaches.slice(0, 5).map(b => `
+            <div class="breach-alert">
+                <div class="breach-icon">&#x1f6a8;</div>
+                <div>
+                    <div class="breach-title">${escapeHtml(b.title)}</div>
+                    <div class="breach-desc">${escapeHtml(b.description || '')}</div>
+                    <div class="breach-time">${b.detected_at || ''}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function updateTargetSelectors(targets) {
+        const selectors = [
+            document.getElementById('targetSelector'),
+            document.getElementById('scanTarget'),
+        ];
+
+        selectors.forEach(sel => {
+            if (!sel) return;
+            const currentVal = sel.value;
+            const isMain = sel.id === 'targetSelector';
+
+            sel.innerHTML = isMain ? '<option value="">All Targets</option>' : '';
+            targets.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.id;
+                opt.textContent = `${t.name} (${t.domain})`;
+                sel.appendChild(opt);
+            });
+
+            if (currentVal) sel.value = currentVal;
+        });
+    }
+
+    // --- Charts ---
+    function initCharts() {
+        // Compliance Radar
+        const radarCtx = document.getElementById('complianceRadar').getContext('2d');
+        complianceChart = new Chart(radarCtx, {
+            type: 'radar',
+            data: {
+                labels: ['OWASP Top 10', 'SOC 2', 'GDPR', 'PCI DSS', 'ISO 27001'],
+                datasets: [{
+                    label: 'Compliance Score',
+                    data: [0, 0, 0, 0, 0],
+                    backgroundColor: 'rgba(108, 92, 231, 0.2)',
+                    borderColor: '#6c5ce7',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#6c5ce7',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            stepSize: 20,
+                            color: '#5a6580',
+                            backdropColor: 'transparent',
+                            font: { size: 10 },
+                        },
+                        grid: { color: 'rgba(42, 53, 85, 0.5)' },
+                        pointLabels: {
+                            color: '#8892a8',
+                            font: { size: 11, weight: '600' },
+                        },
+                        angleLines: { color: 'rgba(42, 53, 85, 0.5)' },
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                },
+            }
+        });
+
+        // Trend Chart
+        const trendCtx = document.getElementById('trendChart').getContext('2d');
+        const months = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
+        trendChart = new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [
+                    {
+                        label: 'Security Score',
+                        data: [62, 68, 71, 74, 78, 82],
+                        borderColor: '#6c5ce7',
+                        backgroundColor: 'rgba(108, 92, 231, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#6c5ce7',
+                    },
+                    {
+                        label: 'Findings',
+                        data: [24, 19, 16, 14, 11, 8],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#ef4444',
+                    },
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(42, 53, 85, 0.3)' },
+                        ticks: { color: '#5a6580', font: { size: 11 } },
+                    },
+                    y: {
+                        grid: { color: 'rgba(42, 53, 85, 0.3)' },
+                        ticks: { color: '#5a6580', font: { size: 11 } },
+                    },
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#8892a8', usePointStyle: true, pointStyle: 'circle', font: { size: 11 } },
+                    },
+                },
+            }
+        });
+    }
+
+    function updateComplianceRadar(compliance) {
+        const mapping = {
+            owasp_top_10: 0,
+            soc2: 1,
+            gdpr: 2,
+            pci_dss: 3,
+            iso_27001: 4,
+        };
+
+        const data = [0, 0, 0, 0, 0];
+        for (const [key, idx] of Object.entries(mapping)) {
+            if (compliance[key]) {
+                data[idx] = compliance[key].score || 0;
+            }
+        }
+
+        complianceChart.data.datasets[0].data = data;
+        complianceChart.update();
+    }
+
+    // --- Actions ---
+    async function triggerScan() {
+        const targetId = currentTargetId || document.getElementById('scanTarget')?.value;
+        if (!targetId) {
+            showModal('scanModal');
+            return;
+        }
+
+        try {
+            const resp = await fetch(`${API}/api/scans`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target_id: parseInt(targetId) }),
+            });
+            const data = await resp.json();
+            alert(data.message || 'Scan started');
+        } catch (e) {
+            alert('Failed to start scan');
+        }
+    }
+
+    async function startScan() {
+        hideModal('scanModal');
+        await triggerScan();
+    }
+
+    async function addTarget() {
+        const name = document.getElementById('targetName').value.trim();
+        const domain = document.getElementById('targetDomain').value.trim();
+        const emailsRaw = document.getElementById('targetEmails').value.trim();
+        const emails = emailsRaw ? emailsRaw.split(',').map(e => e.trim()).filter(Boolean) : [];
+
+        if (!domain) {
+            alert('Domain is required');
+            return;
+        }
+
+        try {
+            const resp = await fetch(`${API}/api/targets`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name || domain, domain, emails }),
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                hideModal('targetModal');
+                refreshData();
+                alert('Target added successfully');
+            } else {
+                alert(data.error || 'Failed to add target');
+            }
+        } catch (e) {
+            alert('Failed to add target');
+        }
+    }
+
+    function generateReport() {
+        alert('Report generation triggered. Check the Reports section.');
+    }
+
+    // --- Helpers ---
+    function getGradeColor(grade) {
+        const colors = { A: '#22c55e', B: '#2ecc71', C: '#eab308', D: '#f97316', F: '#ef4444' };
+        return colors[grade] || colors.F;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
+
+    function showModal(id) {
+        document.getElementById(id).classList.add('active');
+    }
+
+    function hideModal(id) {
+        document.getElementById(id).classList.remove('active');
+    }
+
+    // Close modal on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) overlay.classList.remove('active');
+        });
+    });
+</script>
+
+</body>
+</html>

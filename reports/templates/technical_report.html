@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Technical Security Report — {{ target_name }}</title>
+    <style>
+        body { font-family: 'SF Mono', 'Consolas', monospace; color: #c0c0c0; background: #0d1117; max-width: 1000px; margin: 0 auto; padding: 40px; font-size: 14px; }
+        h1 { color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+        h2 { color: #79c0ff; margin-top: 30px; }
+        h3 { color: #d2a8ff; }
+        .meta { color: #8b949e; font-size: 12px; margin-bottom: 30px; }
+        .score-bar { background: #21262d; border-radius: 8px; padding: 4px; margin: 10px 0; }
+        .score-fill { height: 24px; border-radius: 6px; text-align: center; line-height: 24px; font-size: 12px; font-weight: 600; }
+        .fill-a { background: #238636; } .fill-b { background: #2ea043; } .fill-c { background: #d29922; }
+        .fill-d { background: #db6d28; } .fill-f { background: #da3633; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th { background: #161b22; color: #58a6ff; padding: 10px; text-align: left; border: 1px solid #30363d; }
+        td { padding: 8px 10px; border: 1px solid #30363d; }
+        tr:hover { background: #161b22; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .badge-critical { background: #da3633; color: white; }
+        .badge-high { background: #db6d28; color: white; }
+        .badge-medium { background: #d29922; color: #1c2128; }
+        .badge-low { background: #388bfd; color: white; }
+        .badge-info { background: #30363d; color: #8b949e; }
+        .finding-block { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 15px; margin: 10px 0; }
+        .finding-block.critical { border-left: 4px solid #da3633; }
+        .finding-block.high { border-left: 4px solid #db6d28; }
+        .finding-block.medium { border-left: 4px solid #d29922; }
+        .finding-block.low { border-left: 4px solid #388bfd; }
+        .code { background: #161b22; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+        pre { background: #161b22; padding: 15px; border-radius: 8px; overflow-x: auto; border: 1px solid #30363d; }
+        .playbook { background: #0d1117; border: 1px solid #238636; border-radius: 8px; padding: 15px; margin: 10px 0; }
+        .playbook-step { padding: 5px 0; border-bottom: 1px solid #21262d; }
+        .playbook-step:last-child { border-bottom: none; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #30363d; color: #484f58; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <h1>Technical Security Report</h1>
+    <div class="meta">
+        Target: {{ domain }} | Scan ID: {{ scan_id }} | Generated: {{ generated_at }} | Classification: CONFIDENTIAL
+    </div>
+
+    <h2>Scan Summary</h2>
+    <table>
+        <tr><td>Target</td><td>{{ domain }}</td></tr>
+        <tr><td>Scan Type</td><td>{{ scan_type }}</td></tr>
+        <tr><td>Duration</td><td>{{ scan_duration }}</td></tr>
+        <tr><td>Total Findings</td><td>{{ total_findings }}</td></tr>
+        <tr><td>Security Score</td><td>{{ security_score }}/100 ({{ grade }})</td></tr>
+    </table>
+
+    <h2>Security Score Breakdown</h2>
+    {% for framework, data in compliance.items() %}
+    <div style="margin: 8px 0;">
+        <span>{{ framework|upper|replace('_', ' ') }}: {{ data.score }}/100</span>
+        <div class="score-bar">
+            <div class="score-fill fill-{{ data.grade|lower }}" style="width: {{ data.score }}%;">{{ data.grade }}</div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <h2>Findings Detail</h2>
+
+    {% for finding in findings %}
+    <div class="finding-block {{ finding.severity }}">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0;">{{ finding.title }}</h3>
+            <span class="badge badge-{{ finding.severity }}">{{ finding.severity|upper }}</span>
+        </div>
+        <table style="margin-top: 10px;">
+            <tr><td style="width: 120px;">Category</td><td><span class="code">{{ finding.category }}</span></td></tr>
+            <tr><td>Description</td><td>{{ finding.description }}</td></tr>
+            <tr><td>Remediation</td><td>{{ finding.remediation }}</td></tr>
+            <tr><td>Status</td><td>{{ finding.status }}</td></tr>
+        </table>
+    </div>
+    {% endfor %}
+
+    {% if port_scan %}
+    <h2>Port Scan Results</h2>
+    <table>
+        <tr><th>Port</th><th>Service</th><th>Status</th></tr>
+        {% for port in port_scan.open_ports %}
+        <tr>
+            <td>{{ port.port }}</td>
+            <td>{{ port.service }}</td>
+            <td><span class="badge badge-info">OPEN</span></td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+
+    {% if ssl_info %}
+    <h2>SSL/TLS Configuration</h2>
+    <table>
+        <tr><td>Grade</td><td><span class="badge badge-{{ 'low' if ssl_info.grade in ['A', 'B'] else 'medium' if ssl_info.grade == 'C' else 'critical' }}">{{ ssl_info.grade }}</span></td></tr>
+        <tr><td>Protocol</td><td>{{ ssl_info.protocol }}</td></tr>
+        <tr><td>Expires In</td><td>{{ ssl_info.expires_in_days }} days</td></tr>
+    </table>
+    {% endif %}
+
+    {% if playbooks %}
+    <h2>Remediation Playbooks</h2>
+    {% for playbook in playbooks %}
+    <div class="playbook">
+        <h3>{{ playbook.title }}</h3>
+        <p>Related finding: <span class="code">{{ playbook.finding }}</span></p>
+        {% for step in playbook.steps %}
+        <div class="playbook-step">
+            <span style="color: #238636;">{{ loop.index }}.</span> {{ step }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if dns_info %}
+    <h2>DNS Records</h2>
+    <table>
+        <tr><th>Type</th><th>Records</th></tr>
+        {% for rtype, records in dns_info.records.items() %}
+        <tr>
+            <td>{{ rtype }}</td>
+            <td>{{ records|join(', ') if records else '—' }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+
+    {% if email_security %}
+    <h2>Email Security</h2>
+    <table>
+        <tr><td>SPF</td><td><span class="code">{{ email_security.spf or 'NOT FOUND' }}</span></td></tr>
+        <tr><td>DMARC</td><td><span class="code">{{ email_security.dmarc or 'NOT FOUND' }}</span></td></tr>
+        <tr><td>DKIM</td><td><span class="code">{{ email_security.dkim or 'NOT FOUND' }}</span></td></tr>
+    </table>
+    {% endif %}
+
+    <div class="footer">
+        <p>Cerberus Security Platform — Technical Report — {{ generated_at }}</p>
+        <p>This report contains sensitive security information. Handle according to your organization's data classification policy.</p>
+    </div>
+</body>
+</html>
