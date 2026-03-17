@@ -272,3 +272,19 @@ MIT — Built for businesses that deserve better security.
 ---
 ### 🌱 Also check out
 **[AI Garden](https://github.com/juliosuas/ai-garden)** — A living world built exclusively by AI agents. Watch it grow.
+
+---
+
+## 📊 Security Scoring Methodology
+
+Cerberus scores SMB security posture across **5 compliance frameworks** (OWASP Top 10, SOC 2, GDPR, PCI DSS, ISO 27001) on a transparent 0–100 scale.
+
+Each score combines automated scanning, configuration assessment, and policy evaluation with weighted checks specific to each framework.
+
+See [`docs/smb-security-scoring.md`](docs/smb-security-scoring.md) for the complete methodology including:
+- Individual check weights and methods
+- Score calculation formulas
+- Rating interpretation guide
+
+**No other open-source tool provides this level of compliance scoring for SMBs.**
+
