@@ -152,3 +152,7 @@ MIT — Built for businesses that deserve better security.
 <p align="center">
   <strong>Cerberus</strong> — Because every business deserves a guard dog. 🐕
 </p>
+
+---
+### 🌱 Also check out
+**[AI Garden](https://github.com/juliosuas/ai-garden)** — A living world built exclusively by AI agents. Watch it grow.
